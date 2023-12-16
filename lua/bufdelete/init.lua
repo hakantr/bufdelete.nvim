@@ -53,8 +53,13 @@ local function buf_kill(target_buffers, force, wipeout)
                     ),
                     { '&Kaydet', 'Ka&pat', '&Vazgeç' }
                 )
-                if choice == 1 then     -- Save changes to the buffer.
-                    api.nvim_buf_call(bufnr, function() cmd.write() end)
+                if choice == 1 then -- Save changes to the buffer.
+                    if bufname(bufnr) == '[No Name]' then
+                        buf_is_deleted[bufnr] = ni
+                        msg("Dosya ismi tanımlanmadığı için kaydedilemiyor!", "error")
+                    else
+                        api.nvim_buf_call(bufnr, function() cmd.write() end)
+                    end
                 elseif choice ~= 2 then -- If not ignored, remove buffer from targets.
                     buf_is_deleted[bufnr] = nil
                 end
