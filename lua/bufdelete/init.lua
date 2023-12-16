@@ -2,6 +2,7 @@ local api = vim.api
 local cmd = vim.cmd
 local fn = vim.fn
 local bo = vim.bo
+local msg = vim.notify
 
 if fn.has('nvim-0.8') == 0 then
     api.nvim_err_writeln('bufdelete.nvim sadece Neovim 0.8 ve üzeri sürümlerde çalışır!')
@@ -26,9 +27,9 @@ end
 local function char_prompt(text, choices)
     local choice = fn.confirm(text, table.concat(choices, '\n'), '', 'Q')
     if choice == 0 then
-        return 'C' -- Cancel if no choice was made
+        return '3' -- Cancel if no choice was made
     else
-        return string.match(choices[choice], '&?(%a)')
+        return choice
     end
 end
 
@@ -47,29 +48,27 @@ local function buf_kill(target_buffers, force, wipeout)
             if bo[bufnr].modified then
                 local choice = char_prompt(
                     string.format(
-                        '(%s) Arabelleğindeki son değişikler kaydedilmedi.',
-                        bufnr, bufname(bufnr)
+                        '%s Belgesindeki son değişikler kaydedilmedi.',
+                        bufname(bufnr)
                     ),
-                    {'&Kaydet', 'Ka&pat', '&Vazgeç'}
+                    { '&Kaydet', 'Ka&pat', '&Vazgeç' }
                 )
-
-                if choice == 'k' or choice == 'K' then  -- Save changes to the buffer.
+                if choice == 1 then     -- Save changes to the buffer.
                     api.nvim_buf_call(bufnr, function() cmd.write() end)
-                elseif choice ~= 'p' and choice ~= 'P' then  -- If not ignored, remove buffer from targets.
+                elseif choice ~= 2 then -- If not ignored, remove buffer from targets.
                     buf_is_deleted[bufnr] = nil
                 end
-
             elseif bo[bufnr].buftype == 'terminal'
-            and fn.jobwait({bo[bufnr].channel}, 0)[1] == -1 then
+                and fn.jobwait({ bo[bufnr].channel }, 0)[1] == -1 then
                 local choice = char_prompt(
                     string.format(
                         'Terminal (%s) arabelleği halen çalışıyor',
                         bufnr, bufname(bufnr)
                     ),
-                    {'Ka&pat', '&Vazgeç'}
+                    { 'Ka&pat', '&Vazgeç' }
                 )
 
-                if choice ~= 'p' and choice ~= 'P' then
+                if choice ~= 2 then
                     buf_is_deleted[bufnr] = nil
                 end
             end
@@ -78,7 +77,7 @@ local function buf_kill(target_buffers, force, wipeout)
 
     if next(buf_is_deleted) == nil then
         -- No targets, do nothing
-        api.nvim_err_writeln('bufdelete.nvim: Arabellek silinemedi')
+        msg("Değişiklikler iptal edilmedi.", "info")
         return
     end
 
@@ -113,7 +112,7 @@ local function buf_kill(target_buffers, force, wipeout)
                 switch_bufnr_lastused = bufinfo.lastused
             end
         end
-    -- Otherwise create a new buffer and switch all windows to it.
+        -- Otherwise create a new buffer and switch all windows to it.
     else
         switch_bufnr = api.nvim_create_buf(true, false)
 
